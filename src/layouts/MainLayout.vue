@@ -11,7 +11,7 @@
      <q-btn @click="takePic()" size="75px" color="blue-grey-3" class="justify-center" >
         <q-icon name="photo_camera" size="130px"/>
         <br>
-      <div class="text-weight-thin text-caption">Pulse para capturar imagen</div>
+      <div class="text-weight-light text-caption">Pulse para capturar imagen</div>
      </q-btn>
     </q-page-container>
     
