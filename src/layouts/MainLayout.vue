@@ -22,10 +22,11 @@
         </q-card-section>
          <q-card-section>
            <div>
+             <q-btn @click="sendMail()"> ENVIAR</q-btn>
           <q-input type="email" label="De"></q-input>
           <q-input type="email" label="Para"></q-input>
           <q-input label="Asunto"></q-input>
-          <q-input text-area ></q-input>
+          <q-input text-area label="Texto" ></q-input>
           </div>
            <q-space />
         </q-card-section>
@@ -62,6 +63,9 @@ export default {
               
             },
             this.options)
+    },
+    sendMail(){ 
+      
     }
   }
 }
