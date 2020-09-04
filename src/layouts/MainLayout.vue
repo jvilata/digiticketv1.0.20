@@ -11,34 +11,31 @@
      <q-btn @click="takePic()" size="75px" color="blue-grey-3" class="justify-center" >
         <q-icon name="photo_camera" size="130px"/>
         <br>
-      <div class="text-weight-light text-caption">Pulse para capturar imagen</div>
+      <div class="text-weight-bold text-caption">Pulse para capturar imagen</div>
      </q-btn>
     </q-page-container>
     
     <q-dialog v-model="expanded"  >
       <q-card style="width: 100vw">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h7 text-primary">Enviar por correo</div>
+        <q-card-section class="row bg-primary items-center text-white">
+          <div class="text-h6">Enviar por ...</div>
           <q-space />
-          <q-btn flat icon="close" color="black" @click="expanded = false"/>
+          <q-btn flat icon="close" class="items-right text-white" @click="expanded = false"/>
         </q-card-section>
          <q-card-section>
-           <div>
-             <q-btn @click="sendMail()"> ENVIAR</q-btn>
-          <q-input type="email" label="De" v-model="datosImagen.from"></q-input>
-          <q-input type="email" label="Para" v-model="datosImagen.to">></q-input>
-          <q-input label="Asunto" v-model="datosImagen.subject">></q-input>
-          <q-input text-area label="Texto" v-model="datosImagen.body"> ></q-input>
-          </div>
+          <!--q-input type="email" label="De" v-model="datosImagen.from"></q-input-->
+          <!--q-input clearable type="email" label="Para" v-model="datosImagen.to">></q-input--->
+          <q-input clearable label="Asunto" v-model="datosImagen.subject">></q-input>
+          <q-input clearable text-area label="Texto" v-model="datosImagen.body" autogrow @keyup.enter.stop> ></q-input>
            <q-space />
         </q-card-section>
-        <q-card-section size="50px" >
-          <q-img :src="datosImagen.data" />
-        </q-card-section>
-        <q-card-section size="50px" > 
+        <q-card-section> 
           <div class="justify-center text-center">
             <q-btn @click="sendMail()" icon-right="send" label="ENVIAR" color="primary"/>
           </div>
+        </q-card-section>
+        <q-card-section style="100vw">
+          <q-img :src="datosImagen.dataURL+datosImagen.dataB64" />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -47,17 +44,20 @@
 
 <script>
 import { date } from 'quasar'
+
 export default {
   data(){ 
     return { 
       options: {},
       expanded: false,
       datosImagen: { 
-        from: 'jvilata@edicom.es',
+        // from: 'jvilata@vidawm.com',
         to: 'jvilata@edicom.es',
-        subject: 'subject prueba',
-        body: 'texto prueba',
+        subject: `digiticket-${date.formatDate(new Date(),'YYYY-MM-DD HHmmss')}`,
+        body: '',
         data: '',
+        dataB64: '',
+        dataURL: '',
         oMyBlob: null
       }
     }
@@ -67,13 +67,14 @@ export default {
       this.options.destinationType = Camera.DestinationType.DATA_URL
       navigator.camera.getPicture(
             (data) => { // on success    
-              var contentType = 'image/jpeg'          
-              this.datosImagen.data = 'data:' + contentType + ';base64,' + data
+              this.datosImagen.contentType = 'image/jpeg'    
+              this.datosImagen.dataB64 = data
+              this.datosImagen.dataURL = 'data:' + this.datosImagen.contentType + ';base64,'
               this.expanded = true
 
               
               const img = new Image()
-              img.src = this.datosImagen.data
+              img.src = this.datosImagen.dataURL+this.datosImagen.dataB64 // this.datosImagen.data
               img.onload = () => {
                 const scaleFactor = 1
                 // ( img.width > 600 ? 600.0 / img.width : 1)
@@ -84,17 +85,26 @@ export default {
                 elem.height = height
                 const ctx = elem.getContext('2d')
                 // img.width and img.height will contain the original dimensions
-                ctx.drawImage(img, 0, 0, width, height)
-                var data = ctx.canvas.toDataURL(contentType, 0.1)
-                data = data.substring(('data:'+contentType+';base64,').length)
-                console.log(data)
-                var raw = atob(data)
+                if (width >= height) { // rotate
+                  var TO_RADIANS = Math.PI/180
+                  elem.width = height
+                  elem.height = width
+                  ctx.translate(elem.width/2 , elem.height/2)
+                  ctx.rotate( 90 * TO_RADIANS )
+                  ctx.drawImage(img, -width/2, -height/2) // 0, 0, width, height)
+                } else {
+                  ctx.drawImage(img, 0, 0, width, height)
+                }
+                var data = ctx.canvas.toDataURL(this.datosImagen.contentType, 0.3)
+                data = data.substring(this.datosImagen.dataURL.length)
+                var raw = data // atob(this.datosImagen.dataB64)
                 var rawLength = raw.length;
                 var uInt8Array = new Uint8Array(rawLength)
                 for (var i = 0; i < rawLength; ++i) {
                     uInt8Array[i] = raw.charCodeAt(i)
                 }
-                this.datosImagen.oMyBlob = new Blob([uInt8Array], {type: contentType})
+                this.datosImagen.oMyBlob = new Blob([uInt8Array], {type: this.datosImagen.contentType})
+                this.datosImagen.dataB64 = raw
               }
             },
             () => { // on fail
@@ -108,25 +118,63 @@ export default {
           'Content-Type': 'multipart/form-data'
         }
       }
+      var nombre = `digiticket-${date.formatDate(new Date(),'YYYY-MM-DD HHmmss')}`
+
       var formData = new FormData()
       formData.append('action', 'sendattach')
-      formData.append('from', this.datosImagen.from)
+      // formData.append('from', this.datosImagen.from)
       formData.append('to', this.datosImagen.to)
-      formData.append('subject', this.datosImagen.subject)
-      formData.append('body', this.datosImagen.body)
-      formData.append('attach', this.datosImagen.oMyBlob, `ticket ${date.formatDate(new Date(),'YYYY-MM-DD HH:mm:ss')}.jpeg`)
-      return this.$axios.post('lib/sendmail.php', formData, headerFormDataSinCredentials)
+      formData.append('subject', (this.datosImagen.subject.length===0?nombre:this.datosImagen.subject))
+      formData.append('body', `${this.datosImagen.body}\n\r\n\rPowered by DigiTicket. 2020`)
+      //formData.append('attach', this.datosImagen.oMyBlob, nombre)
+
+      this.$q.localStorage.set('to', this.datosImagen.to)
+
+      // this is the complete list of currently supported params you can pass to the plugin (all optional)
+      var options = {
+        to: this.datosImagen.to,
+        message: `${this.datosImagen.body}\n\r\n\rPowered by DigiTicket. 2020`, // not supported on some apps (Facebook, Instagram)
+        subject: (this.datosImagen.subject.length===0?nombre:this.datosImagen.subject), // fi. for email
+        files: [this.datosImagen.dataURL+this.datosImagen.dataB64], // an array of filenames either locally or remotely
+        // url: 'https://www.website.com/foo/#bar?a=b',
+        chooserTitle: 'Elija una app', // Android only, you can override the default share sheet title
+        // appPackageName: 'com.apple.social.facebook', // Android only, you can provide id of the App you want to share with
+        // iPadCoordinates: '0,0,0,0' //IOS only iPadCoordinates for where the popover should be point.  Format with x,y,width,height
+      };
+      var vthis = this
+      var onSuccess = function(result) {
+        vthis.$q.dialog({ title: 'OK', message: 'Ticket subido correctamente a ' + result.app })
+        .onDismiss(()=>{
+              vthis.expanded = false
+            })
+      };
+
+      var onError = function(msg) {
+        vthis.$q.dialog({ title: 'Error', message: 'Error al subir ticket.'+msg+'. Vuélvalo a intentar o contacte con el administrador' })
+      };
+
+      window.plugins.socialsharing.shareWithOptions(options, onSuccess, onError);
+
+      /* this.$axios.post('lib/sendmail.php', formData, headerFormDataSinCredentials)
         .then(response => {
           if (response.data.success) {
             this.$q.dialog({ title: 'OK', message: 'Ticket subido correctamente' })
+            .onDismiss(()=>{
+              this.expanded = false
+            })
           } else {
             this.$q.dialog({ title: 'Error', message: 'Error al subir ticket. Vuélvalo a intentar o contacte con el administrador' })
           }
         })
         .catch(error => {
           this.$q.dialog({ title: 'Error', message: 'Error al subir ticket. Vuélvalo a intentar o contacte con el administrador' })
-        })   
+        })   */
     }
+  },
+  mounted () {
+    this.datosImagen.from = this.$q.localStorage.getItem('from')
+    // this.datosImagen.subject = this.$q.localStorage.getItem('subject')
+    // this.datosImagen.body = this.$q.localStorage.getItem('body')
   }
 }
 </script>

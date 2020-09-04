@@ -1,0 +1,13 @@
+INSTALAR IONIC-SOCIAL SHARE:
+
+$  cordova plugin add cordova-plugin-x-socialsharing
+copiar socialsharing.js en /boot y referenciarlo en quasar.conf
+añadir en config.xml:
+<plugin name="cordova-plugin-x-socialsharing" source="npm" />
+    <platform name="android">
+        <!-- for Android (you will find one in res/xml) -->
+        <feature name="SocialSharing">
+            <param name="android-package" value="nl.xservices.plugins.SocialSharing" />
+        </feature>
+
+
