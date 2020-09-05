@@ -44,6 +44,7 @@
 
 <script>
 import { date } from 'quasar'
+import { jsPDF } from "jspdf"
 
 export default {
   data(){ 
@@ -78,24 +79,24 @@ export default {
               img.onload = () => {
                 const scaleFactor = 1
                 // ( img.width > 600 ? 600.0 / img.width : 1)
-                const width = img.width * scaleFactor
-                const height = img.height * scaleFactor
+                this.datosImagen.width = img.width * scaleFactor
+                this.datosImagen.height = img.height * scaleFactor
                 const elem = document.createElement('canvas')
-                elem.width = width
-                elem.height = height
+                elem.width = this.datosImagen.width
+                elem.height = this.datosImagen.height
                 const ctx = elem.getContext('2d')
                 // img.width and img.height will contain the original dimensions
-                if (width >= height) { // rotate
+                if (this.datosImagen.width >= this.datosImagen.height) { // rotate
                   var TO_RADIANS = Math.PI/180
-                  elem.width = height
-                  elem.height = width
+                  elem.width = this.datosImagen.height
+                  elem.height = this.datosImagen.width
                   ctx.translate(elem.width/2 , elem.height/2)
                   ctx.rotate( 90 * TO_RADIANS )
-                  ctx.drawImage(img, -width/2, -height/2) // 0, 0, width, height)
+                  ctx.drawImage(img, -this.datosImagen.width/2, -this.datosImagen.height/2) // 0, 0, width, height)
                 } else {
-                  ctx.drawImage(img, 0, 0, width, height)
+                  ctx.drawImage(img, 0, 0, this.datosImagen.width, this.datosImagen.height)
                 }
-                var data = ctx.canvas.toDataURL(this.datosImagen.contentType, 0.3)
+                var data = ctx.canvas.toDataURL(this.datosImagen.contentType, 0.2)
                 data = data.substring(this.datosImagen.dataURL.length)
                 var raw = data // atob(this.datosImagen.dataB64)
                 var rawLength = raw.length;
@@ -129,13 +130,29 @@ export default {
       //formData.append('attach', this.datosImagen.oMyBlob, nombre)
 
       this.$q.localStorage.set('to', this.datosImagen.to)
-
+      // convierto a PDF
+      var doc = new jsPDF()
+      var imgData = this.datosImagen.dataURL+this.datosImagen.dataB64
+      var ratio = this.datosImagen.height / this.datosImagen.width
+      if (this.datosImagen.width > this.datosImagen.height) ratio = this.datosImagen.width / this.datosImagen.height
+      var w = doc.internal.pageSize.getWidth()
+      var h = w * ratio
+      var dif = h - doc.internal.pageSize.getHeight()
+      if (dif > 0) {
+        w = w - dif
+        h = w * ratio
+      }
+      doc.addImage(imgData, 'JPEG', 10, 10,Math.round(w)-20,Math.round(h)-20, '', 'MEDIUM') // this.datosImagen.width, this.datosImagen.height)
+      var dataPDF = doc.output('dataurlstring')  // data:application/pdf;filename=generated.pdf;base64,
+      var pos = dataPDF.indexOf(';base64,')+(';base64,').length
+      dataPDF = 'data:application/pdf;base64,' + dataPDF.substring(pos)
       // this is the complete list of currently supported params you can pass to the plugin (all optional)
       var options = {
         to: this.datosImagen.to,
         message: `${this.datosImagen.body}\n\r\n\rPowered by DigiTicket. 2020`, // not supported on some apps (Facebook, Instagram)
         subject: (this.datosImagen.subject.length===0?nombre:this.datosImagen.subject), // fi. for email
-        files: [this.datosImagen.dataURL+this.datosImagen.dataB64], // an array of filenames either locally or remotely
+        files: [dataPDF], // an array of filenames either locally or remotely
+        // files: [this.datosImagen.dataURL+this.datosImagen.dataB64], // an array of filenames either locally or remotely
         // url: 'https://www.website.com/foo/#bar?a=b',
         chooserTitle: 'Elija una app', // Android only, you can override the default share sheet title
         // appPackageName: 'com.apple.social.facebook', // Android only, you can provide id of the App you want to share with
